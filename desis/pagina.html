@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulario</title>
+    <style>
+        /* Puedes agregar estilos CSS aquí según tus preferencias */
+        label {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        input[type="text"],
+        select {
+            margin-bottom: 16px;
+        }
+
+        input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        .checkbox-group {
+            margin-bottom: 16px;
+        }
+
+        .checkbox-group label {
+            display: inline-block;
+            margin-right: 16px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Formulario</h1>
+
+    <form id="form">
+        <label for="campo1">Nombre y Apellido:</label>
+        <input type="text" id="campo1" name="campo1" required><br>
+
+        <label for="campo2">Alias:</label>
+        <input type="text" id="campo2" name="campo2" required><br>
+
+        <form id="rutForm">
+            <label for="rut">Ingrese su RUT:</label>
+            <input type="text" id="rut" name="rut" required>
+            <button type="button" onclick="validarRut()">Validar RUT</button>
+            <!-- Agrega el siguiente elemento div para mostrar los resultados -->
+            <div id="resultadoRut"></div>
+        </form>
+
+        <label for="campo4">Email:</label>
+        <input type="text" id="campo4" name="campo4" required><br>
+
+        <label for="combo1">Región:</label>
+        <select id="combo1" name="combo1"></select><br>
+
+        <label for="combo2">Provincia:</label>
+        <select id="combo2" name="combo2" disabled>
+            <option value="" selected>Selecciona una región primero</option>
+        </select>
+
+        <label for="combo3">Comuna:</label>
+        <select id="combo3" name="combo3" disabled>
+            <option value="" selected>Selecciona una provincia primero</option>
+        </select>
+
+        <label for="combo4">Candidato:</label>
+        <select id="combo4" name="combo4"></select><br>
+
+        <div class="checkbox-group">
+            <label>¿Cómo se enteró de nosotros?</label>
+            <input type="checkbox" id="web" name="web">
+            <label for="web">Web</label>
+
+            <input type="checkbox" id="tv" name="tv">
+            <label for="tv">TV</label>
+
+            <input type="checkbox" id="socialnet" name="socialnet">
+            <label for="socialnet">Redes Sociales</label>
+
+            <input type="checkbox" id="friend" name="friend">
+            <label for="friend">Amigo</label>
+        </div>
+
+        <button type="button" id="votarBtn">Votar</button>
+    </form>
+
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
+    <script>
+        (function ($) {
+            $(document).ready(function () {
+                cargarRegiones();
+                cargarCandidatos();
+
+                function cargarCandidatos() {
+                    $.ajax({
+                        url: 'form.php',
+                        type: 'GET',
+                        data: { accion: 'obtenerCandidatos' },
+                        dataType: 'json',
+                        success: function (data) {
+                            var combo4 = $('#combo4');
+
+                            combo4.empty();
+                            combo4.append('<option value="">Selecciona un candidato</option>');
+
+                            $.each(data, function (index, candidato) {
+                                combo4.append('<option value="' + candidato.id + '">' + candidato.nombre + '</option>');
+                            });
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('Error al cargar los candidatos:', status, error);
+                        }
+                    });
+                }
+
+                function validarRut() {
+                    var rut = document.getElementById("rut").value;
+
+                    var xhr = new XMLHttpRequest();
+                    xhr.open("POST", "validaterut.php", true);
+                    xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+
+                    xhr.onreadystatechange = function () {
+                        if (xhr.readyState == 4 && xhr.status == 200) {
+                            document.getElementById("resultadoRut").innerHTML = xhr.responseText;
+                        }
+                    };
+
+                    xhr.send("rut=" + rut);
+                }
+
+                function cargarRegiones() {
+                    $.ajax({
+                        url: 'form.php',
+                        type: 'GET',
+                        data: { accion: 'obtenerRegiones' },
+                        dataType: 'json',
+                        success: function (data) {
+                            var combo1 = $('#combo1');
+
+                            combo1.empty();
+                            combo1.append('<option value="">Selecciona una región</option>');
+
+                            $.each(data, function (index, region) {
+                                combo1.append('<option value="' + region.id + '">' + region.region + '</option>');
+                            });
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('Error al cargar las regiones:', status, error);
+                        }
+                    });
+                }
+
+                $('#combo1').on('change', function () {
+                    cargarProvincias();
+                });
+
+                function cargarProvincias() {
+                    var idRegion = $('#combo1').val();
+                    var comboProvincias = $('#combo2');
+
+                    comboProvincias.empty().append('<option value="">Selecciona una provincia</option>').prop('disabled', true);
+
+                    if (idRegion !== '') {
+                        $.ajax({
+                            url: 'form.php',
+                            type: 'GET',
+                            data: { accion: 'obtenerProvincias', idRegion: idRegion },
+                            dataType: 'json',
+                            success: function (data) {
+                                comboProvincias.prop('disabled', false);
+
+                                $.each(data, function (index, provincia) {
+                                    comboProvincias.append('<option value="' + provincia.id + '">' + provincia.provincia + '</option>');
+                                });
+                            },
+                            error: function (xhr, status, error) {
+                                console.error('Error al cargar las provincias:', status, error);
+                            }
+                        });
+                    }
+                }
+
+                $('#combo2').on('change', function () {
+                    cargarComunas();
+                });
+
+                function cargarComunas() {
+                    var idProvincia = $('#combo2').val();
+                    var comboComunas = $('#combo3');
+
+                    comboComunas.empty().append('<option value="">Selecciona una comuna</option>').prop('disabled', true);
+
+                    if (idProvincia !== '') {
+                        $.ajax({
+                            url: 'form.php',
+                            type: 'GET',
+                            data: { accion: 'obtenerComunas', idProvincia: idProvincia },
+                            dataType: 'json',
+                            success: function (data) {
+                                comboComunas.prop('disabled', false);
+
+                                $.each(data, function (index, comuna) {
+                                    comboComunas.append('<option value="' + comuna.id + '">' + comuna.comuna + '</option>');
+                                });
+                            },
+                            error: function (xhr, status, error) {
+                                console.error('Error al cargar las comunas:', status, error);
+                            }
+                        });
+                    }
+                }
+
+                // Set up event listener for the "Votar" button
+                $('#votarBtn').on('click', function () {
+                    // Lógica para enviar el formulario
+                    enviarFormulario();
+                });
+
+                // Event listener para el botón de validar RUT
+                $('#validarRutBtn').on('click', function () {
+                    validarRut();
+                });
+
+                function enviarFormulario() {
+                    var isValid = true;
+
+                    function validarCampo(value, fieldName, minLength, regex) {
+                        var trimmedValue = value.trim();
+
+                        if (trimmedValue === '') {
+                            alert('El campo "' + fieldName + '" no puede estar en blanco.');
+                            isValid = false;
+                            return;
+                        }
+
+                        if (minLength && trimmedValue.length < minLength) {
+                            alert('El campo "' + fieldName + '" debe tener al menos ' + minLength + ' caracteres.');
+                            isValid = false;
+                            return;
+                        }
+
+                        if (regex && !regex.test(trimmedValue)) {
+                            alert('El campo "' + fieldName + '" tiene un formato no válido.');
+                            isValid = false;
+                            return;
+                        }
+                    }
+
+                    // Validar campo "Nombre y Apellido"
+                    var nombreInput = $('#campo1');
+                    var nombreValue = nombreInput.val();
+                    validarCampo(nombreValue, 'Nombre y Apellido', null, /^[a-zA-Z\s]+$/);
+
+                    // Validar campo "Alias"
+                    var aliasInput = $('#campo2');
+                    var aliasValue = aliasInput.val();
+                    validarCampo(aliasValue, 'Alias', 5, null);
+
+                    // Validar campo "Email"
+                    var emailInput = $('#campo4');
+                    var emailValue = emailInput.val();
+                    validarCampo(emailValue, 'Email', null, /^[^\s@]+@[^\s@]+\.[^\s@]+$/);
+
+                    if (isValid) {
+                        var nombre = $('#campo1').val();
+                        var alias = $('#campo2').val();
+                        var rut = $('#rut').val();
+                        var email = $('#campo4').val();
+                        var region = $('#combo1').val();
+                        var provincia = $('#combo2').val();
+                        var comuna = $('#combo3').val();
+                        var candidato = $('#combo4').val();
+
+                        $.ajax({
+                            url: 'form.php',
+                            type: 'POST',
+                            data: {
+                                accion: 'insertarVotante',
+                                nombre: nombre,
+                                alias: alias,
+                                rut: rut,
+                                email: email,
+                                region: region,
+                                provincia: provincia,
+                                comuna: comuna,
+                                candidato: candidato
+                            },
+                            dataType: 'json',
+                            success: function (data) {
+                                console.log(data);
+                                alert(data.mensaje);
+                            },
+                            error: function (xhr, status, error) {
+                                console.error('Error al insertar datos del votante:', status, error);
+                            }
+                        });
+                    } else {
+                        console.log('Formulario no válido. No se enviarán datos.');
+                    }
+                }
+            });
+        })(jQuery);
+    </script>
+</body>
+
+</html>
